@@ -7,7 +7,7 @@ from datetime import datetime
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from loguru import logger
 from pyrogram import enums
-from config import NOTIFICATION_CHANNEL, SUPPORT_GROUP_URL, SOURCE_CODE_URL
+from config import NOTIFICATION_CHANNEL, SUPPORT_GROUP_URL
 
 # ======================
 # GENERATED AVATAR FUNCTION (from your sample)
@@ -64,16 +64,52 @@ def generate_avatar(name: str, size: tuple = (500, 500)) -> Image.Image:
     return img
 
 # ======================
+# PROFILE PHOTO DOWNLOAD - WORKING VERSION
+# ======================
+async def get_profile_photo(bot, user_id):
+    """Download REAL profile photo using Pyrogram"""
+    try:
+        logger.info(f"📸 Downloading profile photo for user {user_id}")
+        
+        # Get chat photos using Pyrogram's async generator
+        photos = []
+        async for photo in bot.get_chat_photos(user_id, limit=1):
+            photos.append(photo)
+        
+        if not photos:
+            logger.warning(f"⚠️ No profile photo for user {user_id}")
+            return generate_avatar(str(user_id))
+        
+        # Download the photo
+        photo_bytes = await bot.download_media(photos[0].file_id, in_memory=True)
+        
+        # Open and process the image
+        original_img = Image.open(photo_bytes).convert("RGB")
+        
+        # Create circular mask
+        size = (500, 500)
+        mask = Image.new('L', size, 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.ellipse((0, 0, size[0], size[1]), fill=255)
+        
+        # Resize and apply mask
+        img = ImageOps.fit(original_img, size, method=Image.LANCZOS)
+        img.putalpha(mask)
+        
+        logger.success(f"✅ Downloaded real profile photo for user {user_id}")
+        return img
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to download profile photo: {e}")
+        return generate_avatar(str(user_id))
+
+# ======================
 # NOTIFICATION FUNCTION (EXACTLY from your sample)
 # ======================
-async def generate_notification_image(user_name: str, bot_name: str, user_photo: Image.Image = None, bot_photo: Image.Image = None, action: str = "Started"):
-    """Generate a pro-quality notification image - EXACT COPY from your sample"""
+async def generate_notification_image(user_photo, bot_photo, user_name: str, bot_name: str, action: str):
+    """Generate a pro-quality notification image with REAL profile photos"""
     try:
-        # Use generated avatars if no photos provided
-        if user_photo is None:
-            user_photo = generate_avatar(user_name)
-        if bot_photo is None:
-            bot_photo = generate_avatar(bot_name)
+        logger.info(f"🎨 Generating notification with REAL photos for {user_name}")
 
         width, height = 1000, 500
         bg = Image.new("RGB", (width, height), (10, 15, 30))
@@ -179,7 +215,7 @@ async def generate_notification_image(user_name: str, bot_name: str, user_photo:
             n_draw.text(((card_width - 10 - w) // 2, 5), safe_name, font=name_font, fill=(255, 255, 255))
             base.paste(name_bg, (card_x + 5, profile_y + img_size + 45), name_bg)
 
-        # Draw avatars
+        # Draw profile photos - USING REAL PHOTOS
         profile_size = 120
         draw_modern_profile(bg, user_photo, user_card_x1, card_y, card_width, profile_size, "USER", user_name, False)
         draw_modern_profile(bg, bot_photo, bot_card_x1, card_y, card_width, profile_size, "BOT", bot_name, True)
@@ -204,6 +240,7 @@ async def generate_notification_image(user_name: str, bot_name: str, user_photo:
         img_byte_arr = io.BytesIO()
         bg.save(img_byte_arr, format='PNG', quality=95)
         img_byte_arr.seek(0)
+        logger.success(f"✅ Notification image generated successfully for {user_name}")
         return img_byte_arr
 
     except Exception as e:
@@ -213,6 +250,7 @@ async def generate_notification_image(user_name: str, bot_name: str, user_photo:
 async def generate_fallback_image(user_name, action):
     """Simple fallback"""
     try:
+        logger.info("🔄 Using fallback image generation")
         width, height = 800, 400
         bg = Image.new("RGB", (width, height), (255, 0, 80))  # TikTok red
         draw = ImageDraw.Draw(bg)
@@ -226,13 +264,13 @@ async def generate_fallback_image(user_name, action):
         bg.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
         return img_byte_arr
-    except:
+    except Exception as e:
+        logger.error(f"❌ Fallback image generation failed: {e}")
         return None
 
 async def send_notification(bot, user_id, username, action):
-    """Send notification using generated avatars (NO profile photo download)"""
+    """Send notification with REAL profile photos"""
     try:
-        
         if not NOTIFICATION_CHANNEL:
             logger.warning("⚠️ NOTIFICATION_CHANNEL not set, skipping notification")
             return
@@ -240,50 +278,59 @@ async def send_notification(bot, user_id, username, action):
         logger.info(f"📤 Sending notification for user {username} ({user_id}), action: {action}")
         
         bot_info = await bot.get_me()
-        bot_name = bot_info.first_name or bot_info.username or "TikTok Bot"
         display_username = username or "Unknown User"
 
-        # USE GENERATED AVATARS (like your sample) - NO PROFILE DOWNLOAD
+        # DOWNLOAD REAL PROFILE PHOTOS
+        logger.info("📸 Downloading USER profile photo...")
+        user_photo = await get_profile_photo(bot, user_id)
+        
+        logger.info("📸 Downloading BOT profile photo...") 
+        bot_photo = await get_profile_photo(bot, bot_info.id)
+
+        # Generate image with REAL photos
         image_bytes = await generate_notification_image(
+            user_photo=user_photo,
+            bot_photo=bot_photo, 
             user_name=display_username,
-            bot_name=bot_name,
-            user_photo=None,  # Will use generated avatar
-            bot_photo=None,   # Will use generated avatar  
+            bot_name=bot_info.first_name or bot_info.username or "TikTok Bot",
             action=action
         )
 
         if image_bytes:
             keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎵 Start Bot", url=f"https://t.me/{bot_info.username}"),
-                InlineKeyboardButton("👥 Support", url=SUPPORT_GROUP_URL)
-            ], [
-                InlineKeyboardButton("💻 Source", url=SOURCE_CODE_URL)
+                InlineKeyboardButton("🤖 ᴠɪꜱɪᴛ ʙᴏᴛ", url=f"https://t.me/{bot_info.username}"),
+                InlineKeyboardButton("👥 ꜱᴜᴘᴘᴏʀᴛ", url=SUPPORT_GROUP_URL)
             ]])
 
-            caption = f"""🎵 **TikTok Downloader • User Activity**
-
-👤 **User:** @{username or 'Not set'}  
-🆔 **User ID:** `{user_id}`  
-📥 **Action:** `{action}`  
-⏰ **Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  
-🤖 **Bot:** @{bot_info.username}
-
-━━━━━━━━━━━━━━━━━━━━
-**Powered by XP TOOLS** ⚡"""
+            caption = f"""🔔 Uꜱᴇʀ Aᴄᴛɪᴠɪᴛʏ Nᴏᴛɪꜰɪᴄᴀᴛɪᴏɴ
+━━━━━━━━•°•°•━━━━━━━━
+☸ ᴜꜱᴇʀɴᴀᴍᴇ: @{username or 'Not set'}
+━━━━━━━━━━━━━━━━━━━━━━━
+☸ ᴜꜱᴇʀ ɪᴅ: {user_id}
+━━━━━━━━━━━━━━━━━━━━━━━
+☸ ᴀᴄᴛɪᴏɴ: {action}
+━━━━━━━━━━━━━━━━━━━━━━━
+☸ ᴛɪᴍᴇ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+━━━━━━━━━━━━━━━━━━━━━━━
+☸ ʙᴏᴛ: @{bot_info.username}
+━━━━━━━━•°•°•━━━━━━━━"""
 
             await bot.send_photo(
                 chat_id=NOTIFICATION_CHANNEL,
                 photo=image_bytes,
                 caption=caption,
-                parse_mode=enums.ParseMode.MARKDOWN,
+                parse_mode=enums.ParseMode.HTML,
                 reply_markup=keyboard
             )
             cleanup_image(image_bytes)
             logger.success(f"✅ Notification sent successfully for user {username}")
+        else:
+            logger.error("❌ Failed to generate notification image")
             
     except Exception as e:
         logger.error(f"❌ Error sending notification: {e}")
 
 def cleanup_image(image_bytes):
+    """Clean up image bytes"""
     if image_bytes:
         image_bytes.close()

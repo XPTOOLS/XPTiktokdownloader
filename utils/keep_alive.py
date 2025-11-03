@@ -2,7 +2,7 @@ import time
 import requests
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from config import PORT, BOT_TOKEN, API_ID, API_HASH, BOT_NAME, BOT_USERNAME, OWNER_USERNAME, WEBSITE_URL, START_PHOTO_URL, SUPPORT_GROUP_URL, SOURCE_CODE_URL
+from config import PORT, BOT_TOKEN, API_ID, API_HASH, BOT_NAME, BOT_USERNAME, OWNER_USERNAME, WEBSITE_URL, WELCOME_IMAGE_URL, SUPPORT_GROUP_URL, SOURCE_CODE_URL
 import json
 from datetime import datetime
 import socket
@@ -188,7 +188,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                             
                             <div class="info-item">
                                 <h3>🔧 Technical Info</h3>
-                                <p><strong>API ID:</strong> {API_ID if API_ID else 'Configured'}</p>
+                                <p><strong>API ID:</strong> {'Configured'}</p>
                                 <p><strong>API Hash:</strong> {'*' * len(API_HASH) if API_HASH else 'Not set'}</p>
                                 <p><strong>Bot Token:</strong> {BOT_TOKEN[:15] + '...' if BOT_TOKEN else 'Not set'}</p>
                                 <p><strong>Port:</strong> {PORT}</p>

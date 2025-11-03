@@ -1,7 +1,7 @@
 from loguru import logger
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup
-
+from utils.imagen import send_notification
 from config import BOT_NAME, PARSE_MODE, START_PHOTO_URL
 from utils.helpers import get_home_keyboard
 from database import db
@@ -13,10 +13,10 @@ async def start_command(client: Client, message: Message):
         username = message.from_user.username or "Unknown"
         first_name = message.from_user.first_name or "User"
         last_name = message.from_user.last_name or ""
-        
+
         logger.info(f"🚀 Start command received from user: {username} (ID: {user_id})")
         
-        # Add user to database
+        # Add user to database FIRST
         user_added = await db.add_user(user_id, username, first_name, last_name)
         if user_added:
             logger.success(f"✅ User {username} saved to database")
@@ -38,7 +38,7 @@ I can help you download TikTok videos without watermarks!
 <b>⟱ᴅᴏᴡɴʟᴏᴀᴅ ꜰʀᴏᴍ ᴡᴇʙꜱɪᴛᴇ⟱</b> 🎯
         """
         
-        # Send welcome message with photo
+        # Send welcome message with photo FIRST
         await message.reply_photo(
             photo=START_PHOTO_URL,
             caption=welcome_text,
@@ -47,6 +47,12 @@ I can help you download TikTok videos without watermarks!
         )
         
         logger.success(f"✅ Welcome message sent to user: {username} (ID: {user_id})")
+        
+        # Send notification AFTER the user gets their welcome message
+        try:
+            await send_notification(client, message.from_user.id, username, "Started Bot")
+        except Exception as e:
+            logger.error(f"❌ Notification failed: {e}")  # Don't break the bot if notification fails
         
     except Exception as e:
         logger.error(f"❌ Error in start command: {e}")

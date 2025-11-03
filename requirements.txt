@@ -1,0 +1,10 @@
+# Web Server
+Flask
+Flask-CORS
+pymongo
+loguru
+python-dotenv
+
+# Telegram Bot
+pyrogram
+tgcrypto

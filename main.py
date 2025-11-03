@@ -6,15 +6,24 @@ import os
 from config import BOT_TOKEN, API_ID, API_HASH, BOT_NAME
 from database import db
 
+# Import keep_alive module
+from utils.keep_alive import start_keep_alive
+import threading
+
 # Import handlers
-from handlers.start import *
-from handlers.about import *
-from handlers.tutorial import *
+from XPTOOLS.start import *
+from XPTOOLS.about import *
+from XPTOOLS.tutorial import *
 
 async def main():
     """Main function to start the bot"""
     try:
         logger.info(f"🚀 Starting {BOT_NAME} Bot...")
+        
+        # Start keep-alive server in a separate thread
+        keep_alive_thread = threading.Thread(target=start_keep_alive, daemon=True)
+        keep_alive_thread.start()
+        logger.info("🔗 Keep-alive server started")
         
         # Test database connection
         logger.info("🔌 Testing database connection...")
@@ -27,7 +36,7 @@ async def main():
             api_id=API_ID,
             api_hash=API_HASH,
             bot_token=BOT_TOKEN,
-            plugins=dict(root="handlers")  # Make sure this points to your handlers directory
+            plugins=dict(root="XPTOOLS")  # Make sure this points to your handlers directory
         )
         
         logger.info("✅ Bot client created successfully")

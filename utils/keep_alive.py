@@ -246,7 +246,7 @@ class HealthHandler(BaseHTTPRequestHandler):
                         </div>
                         
                         <div class="footer">
-                            <p>⚡ Powered by Pyrogram & TikTok Downloader API</p>
+                            <p>⚡ Powered By XP TOOL™ & FREENETHUB™</p>
                             <p>🌐 Hosted on Render • 🕒 24/7 Uptime</p>
                             <p style="margin-top: 10px; font-size: 0.9em;">
                                 "Download TikTok videos effortlessly - No watermark, just pure content! 🎵"
@@ -374,3 +374,4 @@ def start_keep_alive():
 if __name__ == "__main__":
     logger.info("🔧 Running keep_alive.py as standalone script")
     start_keep_alive()
+

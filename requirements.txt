@@ -4,7 +4,14 @@ Flask-CORS
 pymongo
 loguru
 python-dotenv
+requests
 
 # Telegram Bot
 pyrogram
 tgcrypto
+
+# Timezone support
+pytz
+
+# Image processing
+Pillow

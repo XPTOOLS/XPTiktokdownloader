@@ -2,7 +2,7 @@ from loguru import logger
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup
 from utils.imagen import send_notification
-from config import BOT_NAME, PARSE_MODE, START_PHOTO_URL
+from config import BOT_NAME, PARSE_MODE, WELCOME_IMAGE_URL
 from utils.helpers import get_home_keyboard
 from database import db
 
@@ -40,7 +40,7 @@ I can help you download TikTok videos without watermarks!
         
         # Send welcome message with photo FIRST
         await message.reply_photo(
-            photo=START_PHOTO_URL,
+            photo=WELCOME_IMAGE_URL,
             caption=welcome_text,
             reply_markup=get_home_keyboard(),
             parse_mode=PARSE_MODE

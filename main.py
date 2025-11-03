@@ -10,6 +10,10 @@ from database import db
 from utils.keep_alive import start_keep_alive
 import threading
 
+# Import notification functions
+from utils.imagen import send_notification
+from utils.startup import send_startup_message
+
 # Import handlers
 from XPTOOLS.start import *
 from XPTOOLS.about import *
@@ -53,6 +57,12 @@ async def main():
         from config import ADMINS
         logger.info(f"🛡️ Admin features enabled for {len(ADMINS)} users")
         
+        # Send startup notification
+        try:
+            await send_startup_message(bot, is_restart=False)
+        except Exception as e:
+            logger.error(f"❌ Startup notification failed: {e}")
+        
         # Keep the bot running
         await asyncio.Event().wait()
         
@@ -60,6 +70,12 @@ async def main():
         logger.error(f"❌ Failed to start bot: {e}")
     finally:
         if 'bot' in locals():
+            # Send restart notification before stopping
+            try:
+                await send_startup_message(bot, is_restart=True)
+            except Exception as e:
+                logger.error(f"❌ Restart notification failed: {e}")
+                
             await bot.stop()
             logger.info("🛑 Bot stopped")
 

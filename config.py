@@ -29,7 +29,7 @@ OWNER_USERNAME = "Am_itachiuchiha"     # Without @
 WEBSITE_URL = "https://tiktokdownloaderxp.onrender.com/"
 
 # Links
-WELCOME_IMAGE_URL = "https://i.ibb.co/BXSX8N0/iplogo.jpg"
+WELCOME_IMAGE_URL = "https://i.ibb.co/HfvjGMKb/tikdownlogo.jpg"
 SOURCE_CODE_URL = "https://t.me/Am_itachiuchiha"
 SUPPORT_GROUP_URL = "https://t.me/Free_Vpn_Chats"
 YOUTUBE_TUTORIAL_URL = "https://youtube.com/@freenethubtech"
@@ -84,3 +84,4 @@ PARSE_MODE = enums.ParseMode.HTML
 # Logging configuration
 logger.add("bot.log", rotation="10 MB", retention="10 days", level="INFO")
 logger.info("✅ Bot configuration loaded successfully")
+

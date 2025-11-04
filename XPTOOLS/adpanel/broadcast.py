@@ -15,96 +15,91 @@ from config import ADMINS, PARSE_MODE
 broadcast_states = {}
 
 @Client.on_message(filters.command("broadcast") & filters.user(ADMINS))
-async def broadcast_start(client: Client, message: Message):
+async def broadcast_command(client: Client, message: Message):
     """
-    Start the broadcast process
+    Start the broadcast process with a proper flow
     """
     try:
         user_id = message.from_user.id
-        logger.info(f"📤 Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴏᴍᴍᴀɴᴅ ʀᴇᴄᴇɪᴠᴇᴅ ғʀᴏᴍ ᴀᴅᴍɪɴ: {user_id}")
+        logger.info(f"📢 Broadcast command received from admin: {user_id}")
         
-        # Create inline cancel button
-        cancel_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("☒ Cᴀɴᴄᴇʟ ☒", callback_data="cancel_broadcast_start")]
-        ])
-        
-        broadcast_text = """<b>
-📢 Cᴏᴍᴘᴏsᴇ Yᴏᴜʀ Bʀᴏᴀᴅᴄᴀsᴛ Mᴇssᴀɢᴇ ✨
+        # Check if there's a replied message
+        if message.reply_to_message:
+            # If replying to a message, use that as broadcast content
+            await process_broadcast_confirmation(client, message)
+        else:
+            # Show instructions to reply to a message
+            instruction_text = """
+<b>📢 How to send a broadcast:</b>
 
-Pʟᴇᴀsᴇ sᴇɴᴅ ᴛʜᴇ ᴍᴇssᴀɢᴇ ʏᴏᴜ'ᴅ ʟɪᴋᴇ ᴛᴏ sᴇɴᴅ ᴛᴏ ᴀʟʟ ᴜsᴇʀs.
-Tʜɪs ᴡɪʟʟ ʙᴇ sᴇɴᴛ ᴀs ᴀ ʀᴇɢᴜʟᴀʀ (ᴜɴᴘɪɴɴᴇᴅ) ᴍᴇssᴀɢᴇ.
+1. <b>Create your message</b> first (text, photo, video, etc.)
+2. <b>Reply to that message</b> with /broadcast
+3. <b>Confirm</b> the broadcast when prompted
 
-🖋️ Yᴏᴜ ᴄᴀɴ ɪɴᴄʟᴜᴅᴇ ᴛᴇxᴛ, ᴘʜᴏᴛᴏs, ᴠɪᴅᴇᴏs, ᴅᴏᴄᴜᴍᴇɴᴛs, ᴏʀ ᴀɴʏ ᴍᴇᴅɪᴀ.
-❌ Cʟɪᴄᴋ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ ᴛᴏ ᴄᴀɴᴄᴇʟ:</b>
-        """
-        
-        # Store broadcast state
-        broadcast_states[user_id] = {"stage": "awaiting_message"}
-        
-        await message.reply_text(
-            broadcast_text,
-            parse_mode=PARSE_MODE,
-            reply_markup=cancel_markup
-        )
-        
-        logger.info(f"✅ Bʀᴏᴀᴅᴄᴀsᴛ ᴘʀᴏᴄᴇss sᴛᴀʀᴛᴇᴅ ғᴏʀ ᴀᴅᴍɪɴ: {user_id}")
+<blockquote>
+💡 <b>Tip:</b> You can broadcast any type of message - text, photos, videos, documents, etc.
+</blockquote>
+
+<b>Current method:</b>
+↳ Create your message and reply to it with /broadcast
+"""
+            
+            await message.reply_text(
+                instruction_text,
+                parse_mode=PARSE_MODE,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("☒ ᴄᴀɴᴄᴇʟ ☒", callback_data="cancel_broadcast")]
+                ])
+            )
         
     except Exception as e:
-        logger.error(f"❌ Eʀʀᴏʀ ɪɴ ʙʀᴏᴀᴅᴄᴀsᴛ_sᴛᴀʀᴛ: {e}")
-        await message.reply_text("❌ Eʀʀᴏʀ sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ. Pʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.")
+        logger.error(f"❌ Error in broadcast command: {e}")
+        await message.reply_text("❌ Error starting broadcast. Please try again.")
 
-@Client.on_message(filters.user(ADMINS) & ~filters.command("broadcast"))
-async def process_broadcast_message(client: Client, message: Message):
+async def process_broadcast_confirmation(client: Client, message: Message):
     """
-    Process the broadcast message sent by admin
+    Process broadcast confirmation when admin replies to a message with /broadcast
     """
     try:
         user_id = message.from_user.id
         
-        # Check if user is in broadcast state
-        if user_id not in broadcast_states or broadcast_states[user_id].get("stage") != "awaiting_message":
+        if not message.reply_to_message:
+            await message.reply_text("❌ Please reply to a message with /broadcast")
             return
         
         # Get all users
         users = await get_all_users()
         if not users:
-            del broadcast_states[user_id]
-            await message.reply_text(
-                "❌ Nᴏ ᴜsᴇʀs ғᴏᴜɴᴅ ᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ",
-                parse_mode=PARSE_MODE
-            )
-            logger.warning("❌ Nᴏ ᴜsᴇʀs ғᴏᴜɴᴅ ғᴏʀ ʙʀᴏᴀᴅᴄᴀsᴛ")
+            await message.reply_text("❌ No users found to broadcast to.")
             return
         
-        # Store message info for broadcasting
+        # Store broadcast data
         broadcast_states[user_id] = {
-            "stage": "broadcasting",
-            "message": message,
+            "message": message.reply_to_message,
             "users": users,
             "start_time": time.time()
         }
         
         # Show confirmation with message preview
-        confirmation_text = await get_message_preview(message)
-        confirmation_text += f"\n\n<b>Tᴏᴛᴀʟ Rᴇᴄɪᴘɪᴇɴᴛs</b>: {len(users):,}\n\nAʀᴇ ʏᴏᴜ sᴜʀᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ sᴇɴᴅ ᴛʜɪs ʙʀᴏᴀᴅᴄᴀsᴛ?"
+        confirmation_text = await get_message_preview(message.reply_to_message)
+        confirmation_text += f"\n\n<b>Total Recipients</b>: {len(users):,}\n\nAre you sure you want to send this broadcast?"
         
         confirmation_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Yᴇs, Sᴇɴᴅ Bʀᴏᴀᴅᴄᴀsᴛ", callback_data="confirm_broadcast")],
-            [InlineKeyboardButton("☒ Cᴀɴᴄᴇʟ ☒", callback_data="cancel_broadcast")]
+            [InlineKeyboardButton("☑ ʏᴇꜱ, ꜱᴇɴᴅ ʙʀᴏᴀᴅᴄᴀꜱᴛ", callback_data="confirm_broadcast")],
+            [InlineKeyboardButton("☒ ᴄᴀɴᴄᴇʟ ☒", callback_data="cancel_broadcast")]
         ])
         
         await message.reply_text(
             confirmation_text,
             parse_mode=PARSE_MODE,
-            reply_markup=confirmation_keyboard,
-            reply_to_message_id=message.id
+            reply_markup=confirmation_keyboard
         )
         
-        logger.info(f"✅ Bʀᴏᴀᴅᴄᴀsᴛ ᴍᴇssᴀɢᴇ ʀᴇᴄᴇɪᴠᴇᴅ ғʀᴏᴍ ᴀᴅᴍɪɴ: {user_id}, ᴀᴡᴀɪᴛɪɴɢ ᴄᴏɴғɪʀᴍᴀᴛɪᴏɴ")
+        logger.info(f"📢 Broadcast confirmation sent to admin: {user_id}")
         
     except Exception as e:
-        logger.error(f"❌ Eʀʀᴏʀ ɪɴ ᴘʀᴏᴄᴇss_ʙʀᴏᴀᴅᴄᴀsᴛ_ᴍᴇssᴀɢᴇ: {e}")
-        await message.reply_text("❌ Eʀʀᴏʀ ᴘʀᴏᴄᴇssɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴍᴇssᴀɢᴇ. Pʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ.")
+        logger.error(f"❌ Error in process_broadcast_confirmation: {e}")
+        await message.reply_text("❌ Error processing broadcast. Please try again.")
 
 @Client.on_callback_query(filters.regex("^confirm_broadcast$"))
 async def confirm_broadcast(client, callback_query):
@@ -114,21 +109,21 @@ async def confirm_broadcast(client, callback_query):
     try:
         user_id = callback_query.from_user.id
         
-        if user_id not in broadcast_states or broadcast_states[user_id].get("stage") != "broadcasting":
-            await callback_query.answer("❌ Nᴏ ʙʀᴏᴀᴅᴄᴀsᴛ ᴘᴇɴᴅɪɴɢ!", show_alert=True)
+        if user_id not in broadcast_states:
+            await callback_query.answer("❌ No broadcast pending!", show_alert=True)
             return
         
         broadcast_data = broadcast_states[user_id]
         message = broadcast_data["message"]
         users = broadcast_data["users"]
         
-        await callback_query.answer("🚀 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ...", show_alert=False)
+        await callback_query.answer("🚀 Starting broadcast...", show_alert=False)
         
         # Send initial progress message
         progress_msg = await callback_query.message.reply_text(
-            "<b>📨 Bʀᴏᴀᴅᴄᴀsᴛ Iɴɪᴛɪᴀᴛᴇᴅ</b>\n\n"
-            f"<b>📊 Tᴏᴛᴀʟ Rᴇᴄɪᴘɪᴇɴᴛs</b>: {len(users):,}\n"
-            "<b>⏳ Sᴛᴀᴛᴜs: Pʀᴏᴄᴇssɪɴɢ...</b>\n\n"
+            "<b>📢 Broadcast In Progress</b>\n\n"
+            f"<b>📊 Total Recipients</b>: {len(users):,}\n"
+            "<b>⏳ Status: Processing...</b>\n\n"
             "[░░░░░░░░░░] 0%",
             parse_mode=PARSE_MODE
         )
@@ -137,35 +132,13 @@ async def confirm_broadcast(client, callback_query):
         await send_broadcast(client, user_id, message, users, progress_msg)
         
     except Exception as e:
-        logger.error(f"❌ Eʀʀᴏʀ ɪɴ ᴄᴏɴғɪʀᴍ_ʙʀᴏᴀᴅᴄᴀsᴛ: {e}")
-        await callback_query.answer("❌ Eʀʀᴏʀ sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ!", show_alert=True)
-
-@Client.on_callback_query(filters.regex("^cancel_broadcast_start$"))
-async def cancel_broadcast_start(client, callback_query):
-    """
-    Handle broadcast cancellation from start stage
-    """
-    try:
-        user_id = callback_query.from_user.id
-        
-        if user_id in broadcast_states:
-            del broadcast_states[user_id]
-        
-        await callback_query.message.edit_text(
-            "🛑 Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ.",
-            parse_mode=PARSE_MODE
-        )
-        await callback_query.answer("Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ!", show_alert=False)
-        logger.info(f"❌ Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ ʙʏ ᴀᴅᴍɪɴ: {user_id}")
-        
-    except Exception as e:
-        logger.error(f"❌ Eʀʀᴏʀ ɪɴ ᴄᴀɴᴄᴇʟ_ʙʀᴏᴀᴅᴄᴀsᴛ_sᴛᴀʀᴛ: {e}")
-        await callback_query.answer("Eʀʀᴏʀ ᴄᴀɴᴄᴇʟʟɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ!", show_alert=True)
+        logger.error(f"❌ Error in confirm_broadcast: {e}")
+        await callback_query.answer("❌ Error starting broadcast!", show_alert=True)
 
 @Client.on_callback_query(filters.regex("^cancel_broadcast$"))
 async def cancel_broadcast(client, callback_query):
     """
-    Handle broadcast cancellation from confirmation stage
+    Handle broadcast cancellation
     """
     try:
         user_id = callback_query.from_user.id
@@ -174,15 +147,15 @@ async def cancel_broadcast(client, callback_query):
             del broadcast_states[user_id]
         
         await callback_query.message.edit_text(
-            "<b>🛑 Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ.</b>",
+            "❌ Broadcast cancelled.",
             parse_mode=PARSE_MODE
         )
-        await callback_query.answer("Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ!", show_alert=False)
-        logger.info(f"❌ Bʀᴏᴀᴅᴄᴀsᴛ ᴄᴀɴᴄᴇʟʟᴇᴅ ʙʏ ᴀᴅᴍɪɴ: {user_id}")
+        await callback_query.answer("Broadcast cancelled!", show_alert=False)
+        logger.info(f"❌ Broadcast cancelled by admin: {user_id}")
         
     except Exception as e:
-        logger.error(f"❌ Eʀʀᴏʀ ɪɴ ᴄᴀɴᴄᴇʟ_ʙʀᴏᴀᴅᴄᴀsᴛ: {e}")
-        await callback_query.answer("Eʀʀᴏʀ ᴄᴀɴᴄᴇʟʟɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ!", show_alert=True)
+        logger.error(f"❌ Error in cancel_broadcast: {e}")
+        await callback_query.answer("Error cancelling broadcast!", show_alert=True)
 
 async def send_broadcast(client: Client, admin_id: int, message: Message, users: list, progress_msg: Message):
     """
